@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Route, Switch, useHistory, Redirect } from 'react-router-dom';
-import { api, auth } from '../utils/Api';
+import { api } from '../utils/Api';
+import { auth } from '../utils/Auth';
 import Header from './Header';
 import Main from './Main';
 import Footer from './Footer';
@@ -30,14 +31,13 @@ function App() {
   
   useEffect(() => {
     if (loggedIn) {
-      history.push("/main");
+      history.push("/");
+      Promise.all([api.getProfile(), api.getInitialCards()])
+      .then(([data, cardList]) => {
+        setCurrentUser(data);
+        setCards(cardList)})
+      .catch(err => console.log(err))
     };
-
-    Promise.all([api.getProfile(), api.getInitialCards()])
-    .then(([data, cardList]) => {
-      setCurrentUser(data);
-      setCards(cardList)})
-    .catch(err => console.log(err))
   }, [loggedIn]);
 
   useEffect(() => {
@@ -118,7 +118,8 @@ function App() {
           tokenCheck()
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.log(err)
         setIsInfoToolTipOpen(true);
         setIsSuccess(false)
       });
@@ -131,6 +132,7 @@ function App() {
         setIsInfoToolTipOpen(true);
         setIsSuccess(true);
       })
+      .catch(err => console.log(err));
   }
 
   function tokenCheck() {
@@ -138,9 +140,10 @@ function App() {
     if (jwt) {
       auth.getContent(jwt).then(res => {
         setLoggedIn(true);
-        history.push("/main");
+        history.push("/");
         setEmail(res.data.email)
-      }); 
+      })
+      .catch(err => console.log(err));
     }
   }
 
@@ -155,7 +158,7 @@ function App() {
         <Header email={email} handleLogout={handleLogout}/>
         <Switch>
           <ProtectedRoute 
-            path="/main"
+            exact path="/"
             onEditProfile={handleEditProfileClick}
             onEditAvatar={handleEditAvatarClick}
             onAddPlace={handleAddPlaceClick}
@@ -172,7 +175,7 @@ function App() {
             <Register handleRegister={handleRegister}/>
           </Route>
           <Route>
-          { loggedIn ? <Redirect to="/main" /> : <Redirect to="/sign-in" /> }
+          { loggedIn ? <Redirect exact to="/" /> : <Redirect to="/sign-in" /> }
           </Route>
         </Switch>
         { loggedIn && <Footer />}
